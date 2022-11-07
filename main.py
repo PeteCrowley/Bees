@@ -9,18 +9,31 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from date_helpers import day_to_date, date_to_day
+import matplotlib.ticker as ticker
 
-
+# Parameters
 STARTING_POPULATION = 20000
 STARTING_DATE = (2022, 8, 10)
 DRONE_PERCENT = 10
+DAYS = 1000
+PRINT_SUMMARY = False
 
 
 def drone_lifespan(day: int) -> int:
+    """
+    Calculates the lifespan of drone honeybees at a given time of year
+    :param day: the time of year
+    :return: the integer lifespan of a drone
+    """
     return 20
 
 
 def worker_lifespan(day: int) -> int:
+    """
+        Calculates the lifespan of worker honeybees at a given time of year
+        :param day: the time of year
+        :return: the integer lifespan of a worker
+        """
     day_of_year = day % 365
     if day_of_year < 79 or day_of_year > 355:
         return 120
@@ -60,42 +73,49 @@ class BeePopulation:
 
     def __str__(self) -> str:
         """
-        Gets a string summary of the population demographic
-        :return: a summary of the population
+        Gets a string summary of the honeybee population demographic
+        :return: a summary of the honeybee population
         """
-        return "Date: " + str(day_to_date(self.day)) + "\nPopulation Size: " + str(self.population_size) + "\nWorkers: " + \
-               str(self.workers) + "\nDrones: " + str(self.drones)
+        return "Date: " + str(day_to_date(self.day)) + "\nPopulation Size: " + str(self.population_size) + \
+               "\nWorkers: " + str(self.workers) + "\nDrones: " + str(self.drones)
 
 
 if __name__ == "__main__":
-    Bees = BeePopulation(STARTING_POPULATION, date_to_day(STARTING_DATE))
-    print(Bees)
-    print()
-    day_list = [0]
+    Bees = BeePopulation(STARTING_POPULATION, date_to_day(STARTING_DATE)) # Initializing Population
+    if PRINT_SUMMARY:
+        print(Bees, end="\n\n")
+    # Initializing lists for data collection
+    day_list = [date_to_day(STARTING_DATE)]
     pop_size = [Bees.population_size]
     workers = [Bees.workers]
     drones = [Bees.drones]
-    for i in range(1000):
+    # Simulating the defined number of days
+    for i in range(DAYS):
         Bees.step()
+        # Add data from each step to lists
         day_list.append(Bees.day)
         pop_size.append(Bees.population_size)
         workers.append(Bees.workers)
         drones.append(Bees.drones)
-        print(Bees)
-        print()
+        if PRINT_SUMMARY:
+            print(Bees, end="\n\n")
 
-    date_list = [day_to_date(day_list[x]) for x in range(len(day_list))]
-    mdate_list = mdates.date2num(date_list)
-    x_list = mdate_list
-    # date_list = mdates.drange(start_date, )
-    month_locator = mdates.MonthLocator(interval=1)
-    # Make a pretty graph
-    plt.title("Bee Population")
-    plt.xlabel("Day of Year")
-    plt.ylabel("Number of Gees")
-    plt.plot(x_list, pop_size, label="Population")
-    plt.plot(x_list, workers, label="Workers")
-    plt.plot(x_list, drones, label="Drones")
-    plt.legend(loc="upper right")
-    plt.savefig("./Images/SecondModel")
+    mdate_list = mdates.date2num([day_to_date(day_list[x]) for x in range(len(day_list))])  # Dates to matplotlib dates
+
+    # Styling Graph
+    fig, ax = plt.subplots(figsize=(7, 7))
+    ax.set(xlabel="Date", ylabel="Number of Bees (thousands)", title="Bee Population")
+    ax.legend(loc="upper right")
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %y'))
+    plt.setp(ax.get_xticklabels(), rotation=90, fontsize=8)
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1 if (DAYS < 1200) else round(DAYS/800)))
+    ticks_y = ticker.FuncFormatter(lambda x, pos: '{0:g}'.format(x / 1000))
+    ax.yaxis.set_major_formatter(ticks_y)
+
+    # Plotting Data
+    ax.plot(mdate_list, pop_size, label="Population")
+    plt.plot(mdate_list, workers, label="Workers")
+    plt.plot(mdate_list, drones, label="Drones")
+
+    # plt.savefig("./Images/SecondModel")
     plt.show()
