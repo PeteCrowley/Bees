@@ -10,26 +10,33 @@ import matplotlib.dates as mdates
 import datetime
 import matplotlib.ticker as ticker
 import random
+import math
 
 # Parameters
 STARTING_POPULATION = 20000
-STARTING_DATE = datetime.date(2022, 8, 10)
+STARTING_DATE = datetime.datetime(2022, 8, 10)
 DRONE_PERCENT = 10
+LIFESPAN_VARIABILITY = 40
+MINIMUM_AVERAGE_LIFESPAN = 15
+SWARMING = True
 DAYS = 1000
+DAY_STEP, HOUR_STEP, MINUTE_STEP = 0, 0, 30
+FLOAT_DAY_STEP = DAY_STEP+HOUR_STEP/24+MINUTE_STEP/1_440
+TIME_STEP = datetime.timedelta(days=DAY_STEP, hours=HOUR_STEP, minutes=MINUTE_STEP)
 PRINT_SUMMARY = False
-MODEL_ITERATION = 4
+MODEL_ITERATION = 5
 
 
-def drone_lifespan(date: datetime.date) -> int:
+def drone_lifespan(date: datetime.datetime) -> int:
     """
     Calculates the lifespan of drone honeybees at a given time of year
     :param date: the date
-    :return: the integer lifespan of a drone
+    :return: the integer lifespan of a drone90-
     """
     return 20
 
 
-def worker_lifespan(date: datetime.date) -> int:
+def worker_lifespan(date: datetime.datetime) -> int:
     """
         Calculates the lifespan of worker honeybees at a given time of year
         :param date: the date
@@ -43,7 +50,18 @@ def worker_lifespan(date: datetime.date) -> int:
     return 26
 
 
-def choose_swarm_day(year: int) -> datetime.date:
+def sine_worker_lifespan(date: datetime.datetime) -> int:
+    """
+        Calculates the lifespan of worker honeybees at a given time of year
+        :param date: the date
+        :return: the integer lifespan of a worker
+        """
+    day_of_year = date.timetuple().tm_yday
+    return round(LIFESPAN_VARIABILITY * math.cos((2 * math.pi * (day_of_year - 35)) / 365) + (LIFESPAN_VARIABILITY +
+                                                                                              MINIMUM_AVERAGE_LIFESPAN))
+
+
+def choose_swarm_day(year: int) -> datetime.datetime:
     if year % 4 == 0:
         min_day = 60
     else:
@@ -53,7 +71,7 @@ def choose_swarm_day(year: int) -> datetime.date:
     else:
         max_day = 150
     swarm_day = random.randint(min_day, max_day)
-    return datetime.date(year, 1, 1) + datetime.timedelta(days=swarm_day)
+    return datetime.datetime(year, 1, 1) + datetime.timedelta(days=swarm_day)
 
 
 class BeePopulation:
@@ -68,17 +86,17 @@ class BeePopulation:
         else:
             self.next_swarm_date = choose_swarm_day(self.date.year + 1)
 
-    def new_bees(self) -> int:
-        new_bees = 2000
-        new_drones = (self.population_size + 2000) // DRONE_PERCENT - self.drones
-        new_workers = 2000 - new_drones
+    def new_bees(self) -> float:
+        new_bees = 2000 * FLOAT_DAY_STEP
+        new_drones = (self.population_size + new_bees) // DRONE_PERCENT - self.drones
+        new_workers = new_bees - new_drones
         self.drones += new_drones
         self.workers += new_workers
         return new_bees
 
-    def dead_bees(self) -> int:
-        dead_workers = self.workers // worker_lifespan(self.date)
-        dead_drones = self.drones // drone_lifespan(self.date)
+    def dead_bees(self) -> float:
+        dead_workers = FLOAT_DAY_STEP * (self.workers // sine_worker_lifespan(self.date))
+        dead_drones = FLOAT_DAY_STEP * (self.drones // drone_lifespan(self.date))
         self.drones -= dead_drones
         self.workers -= dead_workers
         return dead_workers + dead_drones
@@ -94,8 +112,8 @@ class BeePopulation:
 
     def step(self):
         self.population_size += self.new_bees() - self.dead_bees()
-        self.date += datetime.timedelta(days=1)
-        if self.date == self.next_swarm_date:
+        self.date += TIME_STEP
+        if SWARMING and self.date >= self.next_swarm_date:
             self.swarm()
 
     def __str__(self) -> str:
@@ -103,8 +121,8 @@ class BeePopulation:
         Gets a string summary of the honeybee population demographic
         :return: a summary of the honeybee population
         """
-        return "Date: " + str(self.date) + "\nPopulation Size: " + str(self.population_size) + \
-               "\nWorkers: " + str(self.workers) + "\nDrones: " + str(self.drones)
+        return "Date: " + str(self.date) + "\nPopulation Size: " + str(round(self.population_size)) + \
+               "\nWorkers: " + str(round(self.workers)) + "\nDrones: " + str(round(self.drones))
 
 
 if __name__ == "__main__":
@@ -117,7 +135,7 @@ if __name__ == "__main__":
     workers = [Bees.workers]
     drones = [Bees.drones]
     # Simulating the defined number of days
-    for i in range(DAYS):
+    for i in range(round(DAYS/FLOAT_DAY_STEP)):
         Bees.step()
         # Add data from each step to lists
         date_list.append(Bees.date)
@@ -150,5 +168,5 @@ if __name__ == "__main__":
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15),
               fancybox=True, shadow=True, ncol=5)
 
-    plt.savefig("./Images/Model_" + str(MODEL_ITERATION))
+    # plt.savefig("./Images/Model_" + str(MODEL_ITERATION))
     plt.show()
