@@ -14,17 +14,40 @@ import math
 
 # Parameters
 STARTING_POPULATION = 20000
-STARTING_DATE = datetime.datetime(2022, 8, 10)
+STARTING_DATE = datetime.datetime(2022, 12, 10)
 DRONE_PERCENT = 10
-LIFESPAN_VARIABILITY = 40
+LIFESPAN_VARIABILITY = 70
 MINIMUM_AVERAGE_LIFESPAN = 15
+END_EGG_DAY = datetime.datetime(year=2022, month=10, day=15)
+MAX_EGGS = 2000
 SWARMING = True
+SWARM_START_DAY = datetime.datetime(year=2022, month=4, day=15).timetuple().tm_yday
+SWARM_END_DAY = datetime.datetime(year=2022, month=5, day=31).timetuple().tm_yday
 DAYS = 1000
 DAY_STEP, HOUR_STEP, MINUTE_STEP = 0, 0, 30
-FLOAT_DAY_STEP = DAY_STEP+HOUR_STEP/24+MINUTE_STEP/1_440
+FLOAT_DAY_STEP = DAY_STEP + HOUR_STEP/24 + MINUTE_STEP/1_440
 TIME_STEP = datetime.timedelta(days=DAY_STEP, hours=HOUR_STEP, minutes=MINUTE_STEP)
 PRINT_SUMMARY = False
-MODEL_ITERATION = 5
+MODEL_ITERATION = 6
+
+
+def calc_new_bees(date: datetime.datetime):
+    if date.month > END_EGG_DAY.month or (date.month == END_EGG_DAY.month and date.day > END_EGG_DAY.day):
+        return 0
+    day_of_year = date.timetuple().tm_yday
+    end_day = END_EGG_DAY.timetuple().tm_yday
+    a = (-2 * end_day + math.sqrt(4 * (end_day ** 2) + 3 * (-end_day ** 2))) / -3
+    f = MAX_EGGS / (a * ((end_day - a) ** 2))
+    return f * (end_day - day_of_year) * day_of_year ** 2
+
+
+def quad_calc_new_bees(date: datetime.datetime):
+    if date.month > END_EGG_DAY.month or (date.month == END_EGG_DAY.month and date.day > END_EGG_DAY.day):
+        return 0
+    day_of_year = date.timetuple().tm_yday
+    end_day = END_EGG_DAY.timetuple().tm_yday
+    a = (end_day ** 2) / (4 * MAX_EGGS)
+    return -(day_of_year * (day_of_year - end_day)) / a
 
 
 def drone_lifespan(date: datetime.datetime) -> int:
@@ -62,15 +85,7 @@ def sine_worker_lifespan(date: datetime.datetime) -> int:
 
 
 def choose_swarm_day(year: int) -> datetime.datetime:
-    if year % 4 == 0:
-        min_day = 60
-    else:
-        min_day = 59
-    if year % 4 == 0:
-        max_day = 151
-    else:
-        max_day = 150
-    swarm_day = random.randint(min_day, max_day)
+    swarm_day = random.randint(SWARM_START_DAY, SWARM_END_DAY)
     return datetime.datetime(year, 1, 1) + datetime.timedelta(days=swarm_day)
 
 
@@ -87,7 +102,7 @@ class BeePopulation:
             self.next_swarm_date = choose_swarm_day(self.date.year + 1)
 
     def new_bees(self) -> float:
-        new_bees = 2000 * FLOAT_DAY_STEP
+        new_bees = calc_new_bees(self.date) * FLOAT_DAY_STEP
         new_drones = (self.population_size + new_bees) // DRONE_PERCENT - self.drones
         new_workers = new_bees - new_drones
         self.drones += new_drones
@@ -126,6 +141,7 @@ class BeePopulation:
 
 
 if __name__ == "__main__":
+
     Bees = BeePopulation(STARTING_POPULATION, STARTING_DATE)    # Initializing Population
     if PRINT_SUMMARY:
         print(Bees, end="\n\n")
