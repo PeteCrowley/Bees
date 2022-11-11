@@ -14,34 +14,36 @@ import math
 
 # Parameters
 STARTING_POPULATION = 20000
-STARTING_DATE = datetime.datetime(2022, 12, 10)
+STARTING_DATE = datetime.datetime(2022, 1, 10)
 DRONE_PERCENT = 10
-LIFESPAN_VARIABILITY = 70
+MAXIMUM_AVERAGE_LIFESPAN = 120
 MINIMUM_AVERAGE_LIFESPAN = 15
 END_EGG_DAY = datetime.datetime(year=2022, month=10, day=15)
 MAX_EGGS = 2000
 SWARMING = True
-SWARM_START_DAY = datetime.datetime(year=2022, month=4, day=15).timetuple().tm_yday
-SWARM_END_DAY = datetime.datetime(year=2022, month=5, day=31).timetuple().tm_yday
-DAYS = 1000
+COMPLEX_SWARMING = True
+SWARM_TIME = datetime.timedelta(days=14)
+SWARM_SEASON_START_DAY = datetime.datetime(year=2022, month=4, day=15).timetuple().tm_yday
+SWARM_SEASON_END_DAY = datetime.datetime(year=2022, month=5, day=31).timetuple().tm_yday
+DAYS = 500
 DAY_STEP, HOUR_STEP, MINUTE_STEP = 0, 0, 30
 FLOAT_DAY_STEP = DAY_STEP + HOUR_STEP/24 + MINUTE_STEP/1_440
 TIME_STEP = datetime.timedelta(days=DAY_STEP, hours=HOUR_STEP, minutes=MINUTE_STEP)
-PRINT_SUMMARY = False
-MODEL_ITERATION = 6
+PRINT_SUMMARY = True
+MODEL_ITERATION = 9
 
 
-def calc_new_bees(date: datetime.datetime):
+def cubic_new_bees(date: datetime.datetime) -> float:
     if date.month > END_EGG_DAY.month or (date.month == END_EGG_DAY.month and date.day > END_EGG_DAY.day):
         return 0
     day_of_year = date.timetuple().tm_yday
     end_day = END_EGG_DAY.timetuple().tm_yday
     a = (-2 * end_day + math.sqrt(4 * (end_day ** 2) + 3 * (-end_day ** 2))) / -3
-    f = MAX_EGGS / (a * ((end_day - a) ** 2))
-    return f * (end_day - day_of_year) * day_of_year ** 2
+    b = MAX_EGGS / (a * ((end_day - a) ** 2))
+    return b * (end_day - day_of_year) * day_of_year ** 2
 
 
-def quad_calc_new_bees(date: datetime.datetime):
+def quadratic_new_bees(date: datetime.datetime) -> float:
     if date.month > END_EGG_DAY.month or (date.month == END_EGG_DAY.month and date.day > END_EGG_DAY.day):
         return 0
     day_of_year = date.timetuple().tm_yday
@@ -73,19 +75,19 @@ def worker_lifespan(date: datetime.datetime) -> int:
     return 26
 
 
-def sine_worker_lifespan(date: datetime.datetime) -> int:
+def sine_worker_lifespan(date: datetime.datetime) -> float:
     """
         Calculates the lifespan of worker honeybees at a given time of year
         :param date: the date
         :return: the integer lifespan of a worker
         """
     day_of_year = date.timetuple().tm_yday
-    return round(LIFESPAN_VARIABILITY * math.cos((2 * math.pi * (day_of_year - 35)) / 365) + (LIFESPAN_VARIABILITY +
-                                                                                              MINIMUM_AVERAGE_LIFESPAN))
+    a = MAXIMUM_AVERAGE_LIFESPAN * 2 + 15
+    return a * math.cos((2 * math.pi * (day_of_year - 35)) / 365) + (a + MINIMUM_AVERAGE_LIFESPAN)
 
 
 def choose_swarm_day(year: int) -> datetime.datetime:
-    swarm_day = random.randint(SWARM_START_DAY, SWARM_END_DAY)
+    swarm_day = random.randint(SWARM_SEASON_START_DAY, SWARM_SEASON_END_DAY)
     return datetime.datetime(year, 1, 1) + datetime.timedelta(days=swarm_day)
 
 
@@ -100,10 +102,15 @@ class BeePopulation:
             self.next_swarm_date = choose_swarm_day(self.date.year)
         else:
             self.next_swarm_date = choose_swarm_day(self.date.year + 1)
+        if COMPLEX_SWARMING:
+            self.end_swarm_date = self.next_swarm_date + SWARM_TIME
+        self.swarming = False
 
     def new_bees(self) -> float:
-        new_bees = calc_new_bees(self.date) * FLOAT_DAY_STEP
+        new_bees = cubic_new_bees(self.date) * FLOAT_DAY_STEP
         new_drones = (self.population_size + new_bees) // DRONE_PERCENT - self.drones
+        if new_drones > new_bees:
+            new_drones = new_bees
         new_workers = new_bees - new_drones
         self.drones += new_drones
         self.workers += new_workers
@@ -116,17 +123,25 @@ class BeePopulation:
         self.workers -= dead_workers
         return dead_workers + dead_drones
 
-    def population_change(self):
-        return self.dead_bees() - self.new_bees()
-
-    def swarm(self):
+    def swarm(self) -> None:
         self.population_size //= 2
         self.drones //= 2
         self.workers //= 2
         self.next_swarm_date = choose_swarm_day(self.date.year + 1)
+        if COMPLEX_SWARMING:
+            self.swarming = True
 
-    def step(self):
-        self.population_size += self.new_bees() - self.dead_bees()
+
+
+    def step(self) -> None:
+        if self.swarming:
+            self.population_size -= self.dead_bees()
+            if self.date >= self.end_swarm_date:
+                self.swarming = False
+                self.end_swarm_date = self.next_swarm_date + SWARM_TIME
+                print("done swarming")
+        else:
+            self.population_size += self.new_bees() - self.dead_bees()
         self.date += TIME_STEP
         if SWARMING and self.date >= self.next_swarm_date:
             self.swarm()
@@ -184,5 +199,5 @@ if __name__ == "__main__":
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.15),
               fancybox=True, shadow=True, ncol=5)
 
-    # plt.savefig("./Images/Model_" + str(MODEL_ITERATION))
+    plt.savefig("./Images/Model_" + str(MODEL_ITERATION))
     plt.show()
