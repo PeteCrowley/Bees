@@ -18,37 +18,40 @@ STARTING_DATE = datetime.datetime(2022, 1, 10)
 DRONE_PERCENT = 10
 MAXIMUM_AVERAGE_LIFESPAN = 120
 MINIMUM_AVERAGE_LIFESPAN = 15
-END_EGG_DAY = datetime.datetime(year=2022, month=10, day=15)
-MAX_EGGS = 2000
+LAST_BORN_DAY = datetime.datetime(year=2022, month=10, day=15)
+MAX_NEW_BEES = 2000
+QUEEN_LIFESPAN = 1200
+QUEEN_LAYING_PEAK = 200
+AGE_MATTERS = True
 SWARMING = True
 COMPLEX_SWARMING = True
 SWARM_TIME = datetime.timedelta(days=14)
 SWARM_SEASON_START_DAY = datetime.datetime(year=2022, month=4, day=15).timetuple().tm_yday
 SWARM_SEASON_END_DAY = datetime.datetime(year=2022, month=5, day=31).timetuple().tm_yday
-DAYS = 500
+DAYS = 1500
 DAY_STEP, HOUR_STEP, MINUTE_STEP = 0, 0, 30
 FLOAT_DAY_STEP = DAY_STEP + HOUR_STEP/24 + MINUTE_STEP/1_440
 TIME_STEP = datetime.timedelta(days=DAY_STEP, hours=HOUR_STEP, minutes=MINUTE_STEP)
-PRINT_SUMMARY = True
-MODEL_ITERATION = 9
-
+PRINT_SUMMARY = False
+DEAD_QUEEN_DAY = STARTING_DATE + datetime.timedelta(days=QUEEN_LIFESPAN)
+MODEL_ITERATION = 10
 
 def cubic_new_bees(date: datetime.datetime) -> float:
-    if date.month > END_EGG_DAY.month or (date.month == END_EGG_DAY.month and date.day > END_EGG_DAY.day):
+    if date.month > LAST_BORN_DAY.month or (date.month == LAST_BORN_DAY.month and date.day > LAST_BORN_DAY.day):
         return 0
     day_of_year = date.timetuple().tm_yday
-    end_day = END_EGG_DAY.timetuple().tm_yday
+    end_day = LAST_BORN_DAY.timetuple().tm_yday
     a = (-2 * end_day + math.sqrt(4 * (end_day ** 2) + 3 * (-end_day ** 2))) / -3
-    b = MAX_EGGS / (a * ((end_day - a) ** 2))
+    b = MAX_NEW_BEES / (a * ((end_day - a) ** 2))
     return b * (end_day - day_of_year) * day_of_year ** 2
 
 
 def quadratic_new_bees(date: datetime.datetime) -> float:
-    if date.month > END_EGG_DAY.month or (date.month == END_EGG_DAY.month and date.day > END_EGG_DAY.day):
+    if date.month > LAST_BORN_DAY.month or (date.month == LAST_BORN_DAY.month and date.day > LAST_BORN_DAY.day):
         return 0
     day_of_year = date.timetuple().tm_yday
-    end_day = END_EGG_DAY.timetuple().tm_yday
-    a = (end_day ** 2) / (4 * MAX_EGGS)
+    end_day = LAST_BORN_DAY.timetuple().tm_yday
+    a = (end_day ** 2) / (4 * MAX_NEW_BEES)
     return -(day_of_year * (day_of_year - end_day)) / a
 
 
@@ -73,6 +76,16 @@ def worker_lifespan(date: datetime.datetime) -> int:
     if day_of_year < 172 or day_of_year > 266:
         return 45
     return 26
+
+
+def queen_productivity(date: datetime.datetime) -> float:
+    days_old = (date - STARTING_DATE).days
+    b = QUEEN_LIFESPAN - 2 * QUEEN_LAYING_PEAK
+    m = 1 / ((QUEEN_LAYING_PEAK - QUEEN_LIFESPAN) * (QUEEN_LAYING_PEAK + b))
+    productivity = m * (days_old - QUEEN_LIFESPAN) * (days_old + b)
+    return productivity if productivity > 0 else 0
+
+
 
 
 def sine_worker_lifespan(date: datetime.datetime) -> float:
@@ -108,6 +121,8 @@ class BeePopulation:
 
     def new_bees(self) -> float:
         new_bees = cubic_new_bees(self.date) * FLOAT_DAY_STEP
+        if AGE_MATTERS:
+            new_bees *= queen_productivity(self.date)
         new_drones = (self.population_size + new_bees) // DRONE_PERCENT - self.drones
         if new_drones > new_bees:
             new_drones = new_bees
@@ -139,7 +154,6 @@ class BeePopulation:
             if self.date >= self.end_swarm_date:
                 self.swarming = False
                 self.end_swarm_date = self.next_swarm_date + SWARM_TIME
-                print("done swarming")
         else:
             self.population_size += self.new_bees() - self.dead_bees()
         self.date += TIME_STEP
@@ -156,7 +170,6 @@ class BeePopulation:
 
 
 if __name__ == "__main__":
-
     Bees = BeePopulation(STARTING_POPULATION, STARTING_DATE)    # Initializing Population
     if PRINT_SUMMARY:
         print(Bees, end="\n\n")
@@ -189,8 +202,9 @@ if __name__ == "__main__":
 
     # Plotting Data
     ax.plot(mdate_list, pop_size, label="Total Population")
-    plt.plot(mdate_list, workers, label="Workers")
-    plt.plot(mdate_list, drones, label="Drones")
+    ax.plot(mdate_list, workers, label="Workers")
+    ax.plot(mdate_list, drones, label="Drones")
+    ax.axvline(x=DEAD_QUEEN_DAY, label="The Queen Dies", color="red")
 
     # Legend
     box = ax.get_position()
