@@ -41,11 +41,6 @@ def cubic_new_bees(date: datetime.datetime) -> float:
 
 
 def drone_lifespan(date: datetime.datetime) -> int:
-    """
-    Calculates the lifespan of drone honeybees at a given time of year
-    :param date: the date
-    :return: the integer lifespan of a drone90-
-    """
     return 20
 
 
@@ -58,11 +53,6 @@ def queen_productivity(date: datetime.datetime) -> float:
 
 
 def cosine_worker_lifespan(date: datetime.datetime) -> float:
-    """
-        Calculates the lifespan of worker honeybees at a given time of year
-        :param date: the date
-        :return: the integer lifespan of a worker
-        """
     day_of_year = date.timetuple().tm_yday
     a = (MAXIMUM_AVERAGE_LIFESPAN - MINIMUM_AVERAGE_LIFESPAN) / 2
     return a * math.cos((2 * math.pi * (day_of_year-35)) / 365) + (a + MINIMUM_AVERAGE_LIFESPAN)
