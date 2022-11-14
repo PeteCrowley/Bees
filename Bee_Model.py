@@ -16,8 +16,8 @@ LAST_BORN_DAY = datetime.datetime(year=2022, month=10, day=15)
 MAX_NEW_BEES = 3000
 QUEEN_LIFESPAN = 1000
 QUEEN_LAYING_PEAK = 200
-AGE_MATTERS = False
-SWARMING = False
+AGE_MATTERS = True
+SWARMING = True
 COMPLEX_SWARMING = True
 SWARM_TIME = datetime.timedelta(days=14)
 SWARM_SEASON_START_DAY = datetime.datetime(year=2022, month=4, day=15).timetuple().tm_yday
@@ -40,16 +40,16 @@ def cubic_new_bees(date: datetime.datetime) -> float:
     return b * (end_day - day_of_year) * day_of_year ** 2
 
 
-def drone_lifespan(date: datetime.datetime) -> int:
-    return 20
-
-
 def queen_productivity(date: datetime.datetime) -> float:
     days_old = (date - STARTING_DATE).days
     b = QUEEN_LIFESPAN - 2 * QUEEN_LAYING_PEAK
     m = 1 / ((QUEEN_LAYING_PEAK - QUEEN_LIFESPAN) * (QUEEN_LAYING_PEAK + b))
     productivity = m * (days_old - QUEEN_LIFESPAN) * (days_old + b)
     return productivity if productivity > 0 else 0
+
+
+def drone_lifespan(date: datetime.datetime) -> int:
+    return 20
 
 
 def cosine_worker_lifespan(date: datetime.datetime) -> float:
