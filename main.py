@@ -28,7 +28,7 @@ def run_simulation(print_summary=False, save_fig=False):
             print(bees, end="\n\n")
     mdate_list = mdates.date2num(date_list)  # Dates to matplotlib dates
 
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=(12, 7))
     ax.set(xlabel="Date", ylabel="Number of Bees (thousands)", title="Bee Population")
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %y'))
     plt.setp(ax.get_xticklabels(), rotation=90, fontsize=8)
@@ -67,7 +67,7 @@ def get_simulation_list():
 
 
 def sensitivity_analysis_1():
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=(12, 7))
     ax.set(xlabel="Date", ylabel="Percent Difference in Population Change Per Day", title="Bee Population")
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %y'))
     plt.setp(ax.get_xticklabels(), rotation=90, fontsize=8)
@@ -114,7 +114,7 @@ def sensitivity_analysis_1():
 
 
 def sensitivity_analysis_2():
-    fig, ax = plt.subplots(figsize=(7, 7))
+    fig, ax = plt.subplots(figsize=(12, 7))
     ax.set(xlabel="Date", ylabel="Percent Difference in Population Change Per Day", title="Bee Population")
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %y'))
     plt.setp(ax.get_xticklabels(), rotation=90, fontsize=8)
@@ -140,7 +140,6 @@ def sensitivity_analysis_2():
     queen_peak_difference = [queen_peak[x] - l1[x] for x in range(len(dates))]
     Bee_Model.QUEEN_LAYING_PEAK /= 1.1
 
-
     # Plotting Data
     ax.plot(dates, end_date_difference, label="Last Bee Date")
     ax.plot(dates, queen_life_difference, label="Queen Lifespan")
@@ -148,10 +147,10 @@ def sensitivity_analysis_2():
     # Legend
     ax.legend(loc="upper right")
 
-    # plt.savefig("Images/Sensitivity_Analysis_2")
+    plt.savefig("Images/Sensitivity_Analysis_2")
     plt.show()
 
 
 if __name__ == "__main__":
-    run_simulation()
+    run_simulation(save_fig=False)
 

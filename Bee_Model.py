@@ -7,8 +7,8 @@ import random
 import math
 
 # Parameters
-STARTING_POPULATION = 50000
-STARTING_DATE = datetime.datetime(2022, 1, 1)
+STARTING_POPULATION = 20000
+STARTING_DATE = datetime.datetime(2021, 12, 31)
 DRONE_PERCENT = 10
 MAXIMUM_AVERAGE_LIFESPAN = 120
 MINIMUM_AVERAGE_LIFESPAN = 15
@@ -22,8 +22,8 @@ COMPLEX_SWARMING = True
 SWARM_TIME = datetime.timedelta(days=14)
 SWARM_SEASON_START_DAY = datetime.datetime(year=2022, month=4, day=15).timetuple().tm_yday
 SWARM_SEASON_END_DAY = datetime.datetime(year=2022, month=5, day=31).timetuple().tm_yday
-DAYS = 365
-DAY_STEP, HOUR_STEP, MINUTE_STEP = 1, 0, 0
+DAYS = QUEEN_LIFESPAN + 100
+DAY_STEP, HOUR_STEP, MINUTE_STEP = 0, 1, 0
 FLOAT_DAY_STEP = DAY_STEP + HOUR_STEP/24 + MINUTE_STEP/1_440
 TIME_STEP = datetime.timedelta(days=DAY_STEP, hours=HOUR_STEP, minutes=MINUTE_STEP)
 DEAD_QUEEN_DAY = STARTING_DATE + datetime.timedelta(days=QUEEN_LIFESPAN)
@@ -35,7 +35,7 @@ def cubic_new_bees(date: datetime.datetime) -> float:
         return 0
     day_of_year = date.timetuple().tm_yday
     end_day = LAST_BORN_DAY.timetuple().tm_yday
-    a = (-2 * end_day - math.sqrt(4 * (end_day ** 2))) / -6
+    a = 2/3*end_day
     b = MAX_NEW_BEES / (a ** 2 * (end_day - a))
     return b * (end_day - day_of_year) * day_of_year ** 2
 
