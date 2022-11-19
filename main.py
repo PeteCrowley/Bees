@@ -1,11 +1,11 @@
 # Pcrowley
 # 11/05/2022
-import datetime
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from Bee_Model import *
 import Bee_Model
+
 
 def run_simulation(print_summary=False, save_fig=False):
     bees = BeePopulation(STARTING_POPULATION, STARTING_DATE)  # Initializing Population
